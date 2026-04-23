@@ -147,6 +147,21 @@ export class LmChatMemori implements INodeType {
 
 		const configuration: ClientOptions = {
 			baseURL: options.baseURL || (credentials.baseUrl as string),
+			fetch: async (url, init) => {
+				if (init?.body && typeof init.body === 'string') {
+					try {
+						const body = JSON.parse(init.body);
+						delete body.top_p;
+						delete body.n;
+						delete body.presence_penalty;
+						delete body.frequency_penalty;
+						init = { ...init, body: JSON.stringify(body) };
+					} catch {
+						// body wasn't JSON — leave it alone
+					}
+				}
+				return fetch(url as Parameters<typeof fetch>[0], init as RequestInit);
+			},
 		};
 
 		const maxTokens =
