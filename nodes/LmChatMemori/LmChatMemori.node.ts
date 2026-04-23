@@ -1,0 +1,176 @@
+import { ChatOpenAI, type ClientOptions } from '@langchain/openai';
+import {
+	NodeConnectionTypes,
+	type INodeType,
+	type INodeTypeDescription,
+	type ISupplyDataFunctions,
+	type SupplyData,
+} from 'n8n-workflow';
+
+export class LmChatMemori implements INodeType {
+	description: INodeTypeDescription = {
+		displayName: 'Memori Chat Model',
+		name: 'lmChatMemori',
+		icon: 'file:memori.svg',
+		group: ['transform'],
+		version: 1,
+		description:
+			'OpenAI-compatible chat model that injects memori_attribution (entity_id, process_id, session_id) into every request for self-hosted Memori',
+		defaults: {
+			name: 'Memori Chat Model',
+		},
+		codex: {
+			categories: ['AI'],
+			subcategories: {
+				AI: ['Language Models', 'Root Nodes'],
+				'Language Models': ['Chat Models (Recommended)'],
+			},
+		},
+		inputs: [],
+		outputs: [NodeConnectionTypes.AiLanguageModel],
+		outputNames: ['Model'],
+		credentials: [
+			{
+				name: 'memoriApi',
+				required: true,
+			},
+		],
+		properties: [
+			{
+				displayName:
+					'This sub-node must be connected to an AI Agent (or other AI-capable node) to be used',
+				name: 'notice',
+				type: 'notice',
+				default: '',
+			},
+			{
+				displayName: 'Model',
+				name: 'model',
+				type: 'string',
+				default: 'gpt-4o-mini',
+				required: true,
+				description:
+					'Model name as accepted by your Memori instance (Memori may alias this server-side)',
+			},
+			{
+				displayName: 'Entity ID',
+				name: 'entityId',
+				type: 'string',
+				default: '',
+				required: true,
+				description:
+					'Memori entity (usually the end-user). Sent as memori_attribution.entity_id. Supports expressions referencing the incoming item.',
+			},
+			{
+				displayName: 'Process ID',
+				name: 'processId',
+				type: 'string',
+				default: 'n8n_agent',
+				required: true,
+				description: 'Logical application/process name. Sent as memori_attribution.process_id.',
+			},
+			{
+				displayName: 'Session ID',
+				name: 'sessionId',
+				type: 'string',
+				default: '',
+				required: true,
+				description:
+					'Conversation/session identifier. Sent as memori_attribution.session_id. Supports expressions referencing the incoming item.',
+			},
+			{
+				displayName: 'Options',
+				name: 'options',
+				type: 'collection',
+				placeholder: 'Add Option',
+				default: {},
+				options: [
+					{
+						displayName: 'Base URL Override',
+						name: 'baseURL',
+						type: 'string',
+						default: '',
+						description:
+							'Overrides the Base URL from the credential. Typically your Memori instance, e.g. https://memori.example.com/v1.',
+					},
+					{
+						displayName: 'Max Retries',
+						name: 'maxRetries',
+						type: 'number',
+						default: 2,
+						typeOptions: { minValue: 0 },
+						description: 'Number of retries on transient failures',
+					},
+					{
+						displayName: 'Maximum Number of Tokens',
+						name: 'maxTokens',
+						type: 'number',
+						default: -1,
+						typeOptions: { minValue: -1 },
+						description: 'Maximum tokens to generate. -1 leaves it unset so the server decides.',
+					},
+					{
+						displayName: 'Sampling Temperature',
+						name: 'temperature',
+						type: 'number',
+						default: 0.7,
+						typeOptions: { minValue: 0, maxValue: 2, numberPrecision: 2 },
+					},
+					{
+						displayName: 'Timeout',
+						name: 'timeout',
+						type: 'number',
+						default: 360000,
+						typeOptions: { minValue: 1 },
+						description: 'HTTP request timeout in milliseconds',
+					},
+				],
+			},
+		],
+	};
+
+	async supplyData(this: ISupplyDataFunctions, itemIndex: number): Promise<SupplyData> {
+		const credentials = await this.getCredentials('memoriApi');
+
+		const model = this.getNodeParameter('model', itemIndex) as string;
+		const entityId = this.getNodeParameter('entityId', itemIndex) as string;
+		const processId = this.getNodeParameter('processId', itemIndex) as string;
+		const sessionId = this.getNodeParameter('sessionId', itemIndex) as string;
+
+		const options = this.getNodeParameter('options', itemIndex, {}) as {
+			baseURL?: string;
+			temperature?: number;
+			maxTokens?: number;
+			timeout?: number;
+			maxRetries?: number;
+		};
+
+		const configuration: ClientOptions = {
+			baseURL: options.baseURL || (credentials.baseUrl as string),
+		};
+
+		const maxTokens =
+			options.maxTokens !== undefined && options.maxTokens > 0 ? options.maxTokens : undefined;
+
+		const llm = new ChatOpenAI({
+			apiKey: credentials.apiKey as string,
+			model,
+			temperature: options.temperature ?? 0.7,
+			maxTokens,
+			timeout: options.timeout ?? 360000,
+			maxRetries: options.maxRetries ?? 2,
+			configuration,
+			modelKwargs: {
+				memori_attribution: {
+					entity_id: entityId,
+					process_id: processId,
+					session_id: sessionId,
+				},
+			},
+		});
+
+		return {
+			response: llm,
+		};
+	}
+}
