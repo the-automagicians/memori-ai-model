@@ -159,7 +159,8 @@ export class LmChatMemori implements INodeType {
 						// The OpenAI SDK stamps Content-Length on the original body. Drop
 						// stale length/encoding headers so fetch recomputes them for the
 						// rewritten body, otherwise undici aborts with "Connection error".
-						const headers = new Headers(init.headers as HeadersInit | undefined);
+						// eslint-disable-next-line @typescript-eslint/no-explicit-any
+						const headers = new Headers(init.headers as any);
 						headers.delete('content-length');
 						headers.delete('content-encoding');
 						init = { ...init, body: newBody, headers };
