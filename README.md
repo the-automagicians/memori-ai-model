@@ -1,5 +1,9 @@
 # n8n-nodes-memori
 
+[![npm version](https://img.shields.io/npm/v/n8n-nodes-memori.svg)](https://www.npmjs.com/package/n8n-nodes-memori)
+[![CI](https://github.com/the-automagicians/memori-ai-model/actions/workflows/ci.yml/badge.svg)](https://github.com/the-automagicians/memori-ai-model/actions/workflows/ci.yml)
+[![License: MIT](https://img.shields.io/badge/License-MIT-blue.svg)](LICENSE)
+
 An [n8n](https://n8n.io) community node that exposes a **Memori Chat Model** sub-node for the AI Agent.
 
 [Memori](https://github.com/GibsonAI/memori) is an open-source, self-hosted memory layer for LLMs. When fronted as an OpenAI-compatible proxy it partitions knowledge per **entity** (end-user), **process** (application) and **session** — but only if the client attaches those identifiers on every request. n8n's built-in OpenAI Chat Model has no UI for that, so this package ships a drop-in replacement that does.
@@ -17,6 +21,8 @@ Behaves like the built-in OpenAI Chat Model sub-node, plus three required fields
     { "role": "system", "content": "..." },
     { "role": "user",   "content": "..." }
   ],
+  "temperature": 0.7,
+  "stream": false,
   "memori_attribution": {
     "entity_id":  "<userId>",
     "process_id": "my_n8n_agent",
@@ -29,35 +35,13 @@ Your Memori proxy reads `memori_attribution`, records/retrieves memory for that 
 
 ## Install
 
-### Self-hosted n8n (via Settings UI, after the package is published to npm)
-
-**Settings → Community Nodes → Install** → `n8n-nodes-memori`.
-
-### From a local tarball (before it's on npm, or for testing a fork)
-
-```bash
-git clone https://github.com/the-automagicians/memori-ai-model.git
-cd memori-ai-model
-npm install
-npm run build
-npm pack                          # produces n8n-nodes-memori-<version>.tgz
-```
-
-Then on the n8n host (Docker example):
-
-```bash
-# copy the tarball in and install into the container's /home/node/.n8n/nodes
-docker cp n8n-nodes-memori-*.tgz n8n:/tmp/
-docker exec -u node -w /home/node/.n8n/nodes n8n \
-  npm install /tmp/n8n-nodes-memori-*.tgz
-docker restart n8n
-```
+In self-hosted n8n: **Settings → Community Nodes → Install** → enter `n8n-nodes-memori` → **Install**.
 
 > **Note:** This package depends on `@langchain/openai`, which makes it ineligible for n8n Cloud's community-node verification. It targets **self-hosted** n8n.
 
 ## Configure
 
-1. Create a **Memori API** credential (this package installs the credential type). Fill:
+1. Create a **Memori API** credential (installed by this package). Fill:
    - **API Key** — whatever your Memori instance expects on `Authorization: Bearer <key>`
    - **Base URL** — e.g. `http://memori.internal:8012/v1` (must include the `/v1` — or whatever path your Memori build serves)
 2. Add an **AI Agent** node. Click the language-model socket and pick **Memori Chat Model**.
@@ -70,7 +54,14 @@ docker restart n8n
 | Process ID    | `my_n8n_agent`                                         | Logical app/process name. Static per workflow is fine.|
 | Session ID    | `={{ $json.sessionId ?? $json.userId + '_web' }}`      | Conversation identifier. Expressions supported.       |
 
-Optional fields live under **Options**: Base URL override, Sampling Temperature, Maximum Number of Tokens, Timeout, Max Retries.
+Optional fields under **Options**: Base URL override, Sampling Temperature, Maximum Number of Tokens, Timeout, Max Retries.
+
+## Streaming
+
+The node doesn't hard-code `stream`. Whether `stream: true` is sent to Memori depends on how the AI Agent invokes the model:
+
+- **Chat Trigger with Response Mode = "Streaming"** → the AI Agent calls `model.stream(...)`, OpenAI SDK flips to `stream: true`, Memori streams SSE back, n8n forwards tokens to the client. ✅
+- **Webhook → AI Agent → Respond to Webhook** (default) → non-streaming; agent collects the full completion and returns it in one shot.
 
 ## How it works
 
@@ -85,35 +76,54 @@ new ChatOpenAI({
 });
 ```
 
-Relevant discussion of the same pattern in the n8n community: <https://community.n8n.io/t/openai-chat-model-support-for-extra-body-option-please/65574>.
+A small `fetch` wrapper strips LangChain-injected defaults (`top_p`, `n`, `presence_penalty`, `frequency_penalty`) from outgoing bodies and recomputes `Content-Length`, so the node works cleanly against both OpenAI-backed and Anthropic-backed models routed through Memori (otherwise Anthropic rejects `temperature` + `top_p` together).
+
+Relevant discussion in the n8n community: <https://community.n8n.io/t/openai-chat-model-support-for-extra-body-option-please/65574>.
 
 ## Development
 
 ```bash
+git clone https://github.com/the-automagicians/memori-ai-model.git
+cd memori-ai-model
 npm install
-npm run build        # one-shot TypeScript build + asset copy via @n8n/node-cli
+
+npm run dev          # spins up a local n8n with the node pre-installed + live reload
+npm run build        # one-shot TypeScript build + asset copy (@n8n/node-cli)
 npm run build:watch  # incremental TypeScript rebuild
-npm run lint         # n8n-node lint
+npm run lint
 npm run lint:fix
 ```
 
-Repo layout:
+`npm run dev` is the fastest inner loop: it starts a sub-process n8n at `http://localhost:5678` with the node auto-installed into `~/.n8n-node-cli`, and rebuilds on save.
+
+### Repo layout
 
 ```
 credentials/
-  MemoriApi.credentials.ts   # registers the "Memori API" credential type
+  MemoriApi.credentials.ts   # Memori API credential type
   memori.svg
 nodes/
   LmChatMemori/
     LmChatMemori.node.ts     # the sub-node
     memori.svg
+.github/workflows/
+  ci.yml                     # lint + build on PRs and main
+  publish.yml                # publishes to npm on v*.*.* tags
 ```
+
+### Release process
+
+1. Bump `version` in `package.json`.
+2. Commit, `git tag -a vX.Y.Z -m "..."`, push the commit **and** the tag.
+3. `publish.yml` runs lint + build, then `npm publish --provenance`.
+
+Publishing uses npm Trusted Publishing (OIDC) when configured on the package page; otherwise falls back to `NPM_TOKEN`.
 
 ## Limitations
 
 - **Self-hosted n8n only.** Depends on `@langchain/openai`, so the package cannot be verified for n8n Cloud.
-- **Top-level body injection only.** If Memori's contract ever changes from `memori_attribution` in the body to a custom HTTP header, the node will need updating (easy change — add to `configuration.defaultHeaders` instead of `modelKwargs`).
-- **No streaming tool-call validation** or Responses API support. Kept minimal by design. Open an issue if you need them.
+- **Top-level body injection only.** If Memori's contract ever changes from `memori_attribution` in the body to a custom HTTP header, switch to `configuration.defaultHeaders` instead of `modelKwargs`.
+- **No Responses API or built-in tools** (code interpreter, web search, etc.). Kept minimal by design.
 
 ## License
 
