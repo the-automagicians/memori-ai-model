@@ -36,15 +36,14 @@ jobs:
       - name: Install dependencies
         run: npm ci
 
-      - name: Lint
-        run: npm run lint
-
-      - name: Build
-        run: npm run build
-
+      # `n8n-node release` detects GITHUB_ACTIONS and runs lint + build
+      # + `npm publish` with NPM_CONFIG_PROVENANCE=true. It is also what
+      # the `prepublishOnly` guard expects — calling `npm publish`
+      # directly aborts.
+      #
       # CRITICAL: no `env:` block here. Setting NODE_AUTH_TOKEN — even
       # to an empty string — makes npm treat it as token-based auth and
       # skip the OIDC / Trusted Publishing flow, surfacing as ENEEDAUTH
-      # or a misleading 404. Must also not reference secrets.NPM_TOKEN.
-      - name: Publish to npm via OIDC
-        run: npm publish --provenance --access public
+      # or a misleading 404.
+      - name: Publish
+        run: npm run release
