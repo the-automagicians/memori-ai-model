@@ -41,19 +41,19 @@ jobs:
       - name: Install dependencies
         run: npm ci
 
-      # actions/setup-node with registry-url writes an .npmrc containing
-      #   //registry.npmjs.org/:_authToken=${NODE_AUTH_TOKEN}
-      # With no real NPM_TOKEN, that line resolves to a placeholder or
-      # empty string — either way npm CLI treats it as (bad) auth and
-      # skips the OIDC / Trusted Publishing flow. Strip the auth line so
-      # npm sees no token and authenticates via GitHub OIDC instead.
-      - name: Strip auth token from npmrc for OIDC publishing
+      # actions/setup-node with registry-url writes an .npmrc that
+      # interferes with npm's Trusted Publishing auto-detection. Wipe it
+      # and unset NPM_CONFIG_USERCONFIG so npm uses defaults and the OIDC
+      # flow can engage against https://registry.npmjs.org/.
+      - name: Clear generated .npmrc for OIDC publishing
         run: |
-          if [ -f "$NPM_CONFIG_USERCONFIG" ]; then
-            sed -i '/_authToken/d' "$NPM_CONFIG_USERCONFIG"
-            echo "--- npmrc after stripping ---"
-            cat "$NPM_CONFIG_USERCONFIG"
+          if [ -n "$NPM_CONFIG_USERCONFIG" ] && [ -f "$NPM_CONFIG_USERCONFIG" ]; then
+            rm -f "$NPM_CONFIG_USERCONFIG"
           fi
+          echo "NPM_CONFIG_USERCONFIG=" >> "$GITHUB_ENV"
+          echo "--- npm config ---"
+          npm config get registry
+          npm config get userconfig
 
       # `n8n-node release` detects GITHUB_ACTIONS and runs lint + build +
       # `npm publish --provenance`. Auth is via npm Trusted Publishing (OIDC)

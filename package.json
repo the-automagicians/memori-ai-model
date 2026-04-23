@@ -1,6 +1,6 @@
 {
   "name": "n8n-nodes-memori",
-  "version": "0.2.11",
+  "version": "0.2.12",
   "description": "n8n community node exposing a Memori-aware Chat Model sub-node for AI Agent. Injects memori_attribution (entity_id, process_id, session_id) into every chat completion request so a self-hosted Memori proxy can partition knowledge per user/session.",
   "license": "MIT",
   "homepage": "https://github.com/the-automagicians/memori-ai-model#readme",
