@@ -155,7 +155,14 @@ export class LmChatMemori implements INodeType {
 						delete body.n;
 						delete body.presence_penalty;
 						delete body.frequency_penalty;
-						init = { ...init, body: JSON.stringify(body) };
+						const newBody = JSON.stringify(body);
+						// The OpenAI SDK stamps Content-Length on the original body. Drop
+						// stale length/encoding headers so fetch recomputes them for the
+						// rewritten body, otherwise undici aborts with "Connection error".
+						const headers = new Headers(init.headers as HeadersInit | undefined);
+						headers.delete('content-length');
+						headers.delete('content-encoding');
+						init = { ...init, body: newBody, headers };
 					} catch {
 						// body wasn't JSON — leave it alone
 					}
