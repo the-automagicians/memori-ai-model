@@ -38,7 +38,13 @@ jobs:
       # `n8n-node release` detects GITHUB_ACTIONS and runs lint + build +
       # `npm publish --provenance`. Auth is via npm Trusted Publishing (OIDC)
       # — no NPM_TOKEN needed since the publisher is configured on npmjs.com.
+      #
+      # actions/setup-node writes an .npmrc with
+      #   //registry.npmjs.org/:_authToken=${NODE_AUTH_TOKEN}
+      # and defaults the env var to a placeholder. Force it to empty so the
+      # token line resolves to nothing and npm 11+ falls back to OIDC.
       - name: Publish
         run: npm run release
         env:
+          NODE_AUTH_TOKEN: ''
           NPM_CONFIG_PROVENANCE: 'true'
