@@ -1,6 +1,6 @@
 {
   "name": "n8n-nodes-memori",
-  "version": "0.2.12",
+  "version": "0.2.13",
   "description": "n8n community node exposing a Memori-aware Chat Model sub-node for AI Agent. Injects memori_attribution (entity_id, process_id, session_id) into every chat completion request so a self-hosted Memori proxy can partition knowledge per user/session.",
   "license": "MIT",
   "homepage": "https://github.com/the-automagicians/memori-ai-model#readme",
@@ -17,7 +17,7 @@
   "author": { "name": "Imago Platform", "email": "admin@imagoplatform.ai" },
   "repository": {
     "type": "git",
-    "url": "git+https://github.com/the-automagicians/memori-ai-model.git"
+    "url": "https://github.com/the-automagicians/memori-ai-model.git"
   },
   "scripts": {
     "build": "n8n-node build",

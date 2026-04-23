@@ -1,8 +1,9 @@
 name: Publish to npm
 
-# Triggers on any v*.*.* tag push. Use `npm run release` locally to bump the
-# version, tag, and push — this workflow then publishes to npm with provenance.
-# Required by n8n community-node policy (npm provenance mandatory from 2026-05-01).
+# Triggers on any v*.*.* tag push. Publishes via npm Trusted Publishing
+# (OIDC) — no NPM_TOKEN needed, authentication is handled automatically
+# by npm 11.5+ when id-token: write is granted and the publisher is
+# configured on npmjs.com.
 
 on:
   push:
@@ -13,9 +14,8 @@ jobs:
   publish:
     runs-on: ubuntu-latest
 
-    # id-token: write enables npm Trusted Publishing via OIDC (no NPM_TOKEN
-    # needed once the publisher is configured on npmjs.com). contents: read is
-    # the minimum needed for actions/checkout.
+    # id-token: write is required for npm to fetch an OIDC token from
+    # GitHub and exchange it for a short-lived npm auth token.
     permissions:
       id-token: write
       contents: read
@@ -26,44 +26,25 @@ jobs:
       - name: Use Node.js
         uses: actions/setup-node@v4
         with:
-          # Node 24 ships with npm 11.x, which is required for Trusted
-          # Publishing (OIDC) support.
+          # Node 24 + npm 11.5+ required for Trusted Publishing.
           node-version: '24'
-          registry-url: 'https://registry.npmjs.org/'
-          cache: 'npm'
+          registry-url: 'https://registry.npmjs.org'
 
-      - name: Upgrade npm to latest for Trusted Publishing
-        run: |
-          npm install -g npm@latest
-          npm --version
-          node --version
+      - name: Upgrade npm to latest
+        run: npm install -g npm@latest
 
       - name: Install dependencies
         run: npm ci
 
-      # actions/setup-node with registry-url writes an .npmrc that
-      # interferes with npm's Trusted Publishing auto-detection. Wipe it
-      # and unset NPM_CONFIG_USERCONFIG so npm uses defaults and the OIDC
-      # flow can engage against https://registry.npmjs.org/.
-      - name: Clear generated .npmrc for OIDC publishing
-        run: |
-          if [ -n "$NPM_CONFIG_USERCONFIG" ] && [ -f "$NPM_CONFIG_USERCONFIG" ]; then
-            rm -f "$NPM_CONFIG_USERCONFIG"
-          fi
-          echo "NPM_CONFIG_USERCONFIG=" >> "$GITHUB_ENV"
-          echo "--- npm config ---"
-          npm config get registry
-          npm config get userconfig
+      - name: Lint
+        run: npm run lint
 
-      # `n8n-node release` detects GITHUB_ACTIONS and runs lint + build +
-      # `npm publish --provenance`. Auth is via npm Trusted Publishing (OIDC)
-      # — no NPM_TOKEN needed since the publisher is configured on npmjs.com.
-      #
-      # actions/setup-node writes an .npmrc with
-      #   //registry.npmjs.org/:_authToken=${NODE_AUTH_TOKEN}
-      # and defaults the env var to a placeholder. Force it to empty so the
-      # token line resolves to nothing and npm 11+ falls back to OIDC.
-      - name: Publish
-        run: npm run release
-        env:
-          NPM_CONFIG_PROVENANCE: 'true'
+      - name: Build
+        run: npm run build
+
+      # CRITICAL: no `env:` block here. Setting NODE_AUTH_TOKEN — even
+      # to an empty string — makes npm treat it as token-based auth and
+      # skip the OIDC / Trusted Publishing flow, surfacing as ENEEDAUTH
+      # or a misleading 404. Must also not reference secrets.NPM_TOKEN.
+      - name: Publish to npm via OIDC
+        run: npm publish --provenance --access public
