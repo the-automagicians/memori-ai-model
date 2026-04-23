@@ -1,0 +1,43 @@
+name: Publish to npm
+
+# Triggers on any v*.*.* tag push. Use `npm run release` locally to bump the
+# version, tag, and push — this workflow then publishes to npm with provenance.
+# Required by n8n community-node policy (npm provenance mandatory from 2026-05-01).
+
+on:
+  push:
+    tags:
+      - 'v*.*.*'
+
+jobs:
+  publish:
+    runs-on: ubuntu-latest
+
+    # id-token: write enables npm Trusted Publishing via OIDC (no NPM_TOKEN
+    # needed once the publisher is configured on npmjs.com). contents: read is
+    # the minimum needed for actions/checkout.
+    permissions:
+      id-token: write
+      contents: read
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Use Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+          registry-url: 'https://registry.npmjs.org/'
+          cache: 'npm'
+
+      - name: Install dependencies
+        run: npm ci
+
+      # `n8n-node release` detects GITHUB_ACTIONS and runs lint + build +
+      # `npm publish --provenance`. Prefers OIDC when Trusted Publishing is
+      # configured; falls back to NODE_AUTH_TOKEN if set.
+      - name: Publish
+        run: npm run release
+        env:
+          NODE_AUTH_TOKEN: ${{ secrets.NPM_TOKEN }}
+          NPM_CONFIG_PROVENANCE: 'true'
