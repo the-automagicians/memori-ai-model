@@ -1,6 +1,9 @@
 import { ChatOpenAI, type ClientOptions } from '@langchain/openai';
 import {
 	NodeConnectionTypes,
+	type ILoadOptionsFunctions,
+	type INodeListSearchItems,
+	type INodeListSearchResult,
 	type INodeType,
 	type INodeTypeDescription,
 	type ISupplyDataFunctions,
@@ -46,11 +49,29 @@ export class LmChatMemori implements INodeType {
 			{
 				displayName: 'Model',
 				name: 'model',
-				type: 'string',
-				default: 'gpt-4o-mini',
+				type: 'resourceLocator',
 				required: true,
+				default: { mode: 'list', value: 'gpt-4o-mini' },
 				description:
-					'Model name as accepted by your Memori instance (Memori may alias this server-side)',
+					'Model name as accepted by your Memori instance. Pick from the list loaded from /v1/models, or switch to "ID" to enter a custom alias.',
+				modes: [
+					{
+						displayName: 'From List',
+						name: 'list',
+						type: 'list',
+						typeOptions: {
+							searchListMethod: 'searchModels',
+							searchable: true,
+							searchFilterRequired: false,
+						},
+					},
+					{
+						displayName: 'ID',
+						name: 'id',
+						type: 'string',
+						placeholder: 'e.g. gpt-4o-mini',
+					},
+				],
 			},
 			{
 				displayName: 'Entity ID',
@@ -129,10 +150,47 @@ export class LmChatMemori implements INodeType {
 		],
 	};
 
+	methods = {
+		listSearch: {
+			async searchModels(
+				this: ILoadOptionsFunctions,
+				filter?: string,
+			): Promise<INodeListSearchResult> {
+				const credentials = await this.getCredentials('memoriApi');
+				const baseUrl = ((credentials.baseUrl as string) ?? '').trim().replace(/\/+$/, '');
+				const response = (await this.helpers.httpRequestWithAuthentication.call(
+					this,
+					'memoriApi',
+					{ method: 'GET', url: `${baseUrl}/models`, json: true },
+				)) as { data?: Array<{ id: string; owned_by?: string }> };
+
+				const models = response.data ?? [];
+				const needle = filter?.toLowerCase() ?? '';
+				const results: INodeListSearchItems[] = models
+					.filter((m) => !needle || m.id.toLowerCase().includes(needle))
+					.map((m) => ({
+						name: m.id,
+						value: m.id,
+						description: m.owned_by ? `owned_by: ${m.owned_by}` : undefined,
+					}));
+
+				return { results };
+			},
+		},
+	};
+
 	async supplyData(this: ISupplyDataFunctions, itemIndex: number): Promise<SupplyData> {
 		const credentials = await this.getCredentials('memoriApi');
 
-		const model = this.getNodeParameter('model', itemIndex) as string;
+		// Model is a resourceLocator — extractValue flattens { mode, value } to value.
+		// Also tolerate old workflows that saved the field as a plain string.
+		const rawModel = this.getNodeParameter('model', itemIndex, '', {
+			extractValue: true,
+		});
+		const model =
+			typeof rawModel === 'string'
+				? rawModel
+				: ((rawModel as { value?: string })?.value ?? '');
 		const entityId = this.getNodeParameter('entityId', itemIndex) as string;
 		const processId = this.getNodeParameter('processId', itemIndex) as string;
 		const sessionId = this.getNodeParameter('sessionId', itemIndex) as string;
