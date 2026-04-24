@@ -205,6 +205,14 @@ export class LmChatMemori implements INodeType {
 
 		const configuration: ClientOptions = {
 			baseURL: options.baseURL || (credentials.baseUrl as string),
+			// Send attribution as both headers (what the hosted Memori / MCP Memori
+			// expect) and as a body key (what self-hosted proxies read). Belt and
+			// braces — either path alone is enough to partition memory.
+			defaultHeaders: {
+				'X-Memori-Entity-Id': entityId,
+				'X-Memori-Process-Id': processId,
+				'X-Memori-Session-Id': sessionId,
+			},
 			fetch: async (url, init) => {
 				if (init?.body && typeof init.body === 'string') {
 					try {

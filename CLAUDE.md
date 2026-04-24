@@ -41,18 +41,24 @@ setup-node's placeholder value is benign (npm ignores it when Trusted Publisher 
 
 Do **not** use the `git+https://…` prefix. The provenance validator checks this against the GitHub repo URL and mismatches return `422 Error verifying sigstore provenance bundle`.
 
-### 3. Custom fetch wrapper in `LmChatMemori.node.ts` is load-bearing
+### 3. Attribution is sent on TWO channels
+
+Both must be present; don't remove either:
+- **Body** — `modelKwargs.memori_attribution = { entity_id, process_id, session_id }` → serialized as a top-level JSON key. Self-hosted Memori reads this.
+- **Headers** — `configuration.defaultHeaders['X-Memori-{Entity,Process,Session}-Id']`. Hosted Memori and Memori MCP read these.
+
+### 4. Custom fetch wrapper in `LmChatMemori.node.ts` is load-bearing
 
 It does three things; don't simplify:
 - **Strips** `top_p`, `n`, `presence_penalty`, `frequency_penalty` from outgoing bodies. LangChain injects these defaults; Anthropic-routed models (Claude Sonnet etc.) reject `temperature + top_p`.
 - **Recomputes `Content-Length`** by deleting the stale header. Without this, undici aborts with "Connection error" because the OpenAI SDK stamps Content-Length on the original body and mutating invalidates it.
 - Passes the Response through unmodified (so SSE streaming works).
 
-### 4. Credential type is `memoriApi`, not `openAiApi`
+### 5. Credential type is `memoriApi`, not `openAiApi`
 
 The lint rule `@n8n/community-nodes/no-credential-reuse` forbids reusing credential types from other packages. We define our own `MemoriApi` credential even though its shape mirrors the OpenAI one.
 
-### 5. Don't import n8n internal packages
+### 6. Don't import n8n internal packages
 
 These look useful but are not resolvable from community nodes:
 - `@n8n/ai-utilities` (for `N8nLlmTracing`, `makeN8nLlmFailedAttemptHandler`, etc.)
@@ -60,11 +66,11 @@ These look useful but are not resolvable from community nodes:
 
 The built-in OpenAI Chat Model node uses them; we explicitly don't.
 
-### 6. `prepublishOnly` gates direct `npm publish`
+### 7. `prepublishOnly` gates direct `npm publish`
 
 `n8n-node prerelease` (set as `prepublishOnly`) refuses raw `npm publish` with `Run npm run release to publish the package`. The publish workflow calls `npm run release` — not `npm publish` directly.
 
-### 7. Cloud-support is disabled
+### 8. Cloud-support is disabled
 
 We depend on `@langchain/openai`, which disqualifies us from n8n Cloud verification. `eslint.config.mjs` uses `configWithoutCloudSupport`; `package.json` has `n8n.strict: false`. Don't re-enable cloud-support (`npx n8n-node cloud-support enable`) — it'll flag the LangChain dep and the credential as errors.
 

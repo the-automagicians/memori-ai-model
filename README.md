@@ -14,7 +14,16 @@ Behaves like the built-in OpenAI Chat Model sub-node, plus three required fields
 
 ### Request shape
 
-```json
+Outgoing requests carry the attribution in **both** the body (as `memori_attribution`) **and** as HTTP headers (`X-Memori-*`). Self-hosted Memori proxies read the body; the hosted Memori service and Memori MCP expect the headers. Sending both means the same n8n credential works against all three backends:
+
+```http
+POST /v1/chat/completions HTTP/1.1
+Authorization: Bearer <key>
+Content-Type: application/json
+X-Memori-Entity-Id: <userId>
+X-Memori-Process-Id: my_n8n_agent
+X-Memori-Session-Id: <sessionId>
+
 {
   "model": "gpt-4o-mini",
   "messages": [
@@ -31,7 +40,7 @@ Behaves like the built-in OpenAI Chat Model sub-node, plus three required fields
 }
 ```
 
-Your Memori proxy reads `memori_attribution`, records/retrieves memory for that partition, and forwards the (possibly memory-augmented) request to the upstream model.
+Your Memori proxy reads attribution from whichever channel it prefers, records/retrieves memory for that partition, and forwards the (possibly memory-augmented) request to the upstream model.
 
 ## Prerequisites
 
@@ -76,11 +85,22 @@ The node doesn't hard-code `stream`. Whether `stream: true` is sent to Memori de
 
 ## How it works
 
-The three attribution values are passed into LangChain.js `ChatOpenAI` via `modelKwargs`, which serializes them as top-level keys in the JSON body sent to the OpenAI-compatible endpoint. No HTTP-layer interception, no custom SDK fork.
+The three attribution values ride on two channels:
+
+- **Body** — `modelKwargs.memori_attribution` on LangChain.js `ChatOpenAI` serializes as a top-level key in the JSON body. Self-hosted Memori builds read this.
+- **Headers** — `configuration.defaultHeaders` adds `X-Memori-Entity-Id` / `X-Memori-Process-Id` / `X-Memori-Session-Id` to every request. Hosted Memori + Memori MCP read these.
 
 ```ts
 new ChatOpenAI({
-  apiKey, model, configuration: { baseURL },
+  apiKey, model,
+  configuration: {
+    baseURL,
+    defaultHeaders: {
+      'X-Memori-Entity-Id': entityId,
+      'X-Memori-Process-Id': processId,
+      'X-Memori-Session-Id': sessionId,
+    },
+  },
   modelKwargs: {
     memori_attribution: { entity_id, process_id, session_id },
   },
@@ -133,7 +153,7 @@ Publishing uses npm Trusted Publishing (OIDC) when configured on the package pag
 ## Limitations
 
 - **Self-hosted n8n only.** Depends on `@langchain/openai`, so the package cannot be verified for n8n Cloud.
-- **Top-level body injection only.** If Memori's contract ever changes from `memori_attribution` in the body to a custom HTTP header, switch to `configuration.defaultHeaders` instead of `modelKwargs`.
+- **Body + headers only** — no query-param or payload-envelope support. If a future Memori contract adds more signals, extend `configuration.defaultHeaders` / `modelKwargs` in `supplyData`.
 - **No Responses API or built-in tools** (code interpreter, web search, etc.). Kept minimal by design.
 
 ## License
