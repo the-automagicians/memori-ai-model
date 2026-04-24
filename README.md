@@ -1,6 +1,6 @@
-# n8n-nodes-memori
+# n8n-nodes-memori-community
 
-[![npm version](https://img.shields.io/npm/v/n8n-nodes-memori.svg)](https://www.npmjs.com/package/n8n-nodes-memori)
+[![npm version](https://img.shields.io/npm/v/n8n-nodes-memori-community.svg)](https://www.npmjs.com/package/n8n-nodes-memori-community)
 [![CI](https://github.com/the-automagicians/memori-ai-model/actions/workflows/ci.yml/badge.svg)](https://github.com/the-automagicians/memori-ai-model/actions/workflows/ci.yml)
 [![License: MIT](https://img.shields.io/badge/License-MIT-blue.svg)](LICENSE)
 
@@ -55,7 +55,7 @@ For the OpenAPI schema Memori actually serves, hit `/docs` on your running insta
 
 ## Install
 
-In self-hosted n8n: **Settings → Community Nodes → Install** → enter `n8n-nodes-memori` → **Install**.
+In self-hosted n8n: **Settings → Community Nodes → Install** → enter `n8n-nodes-memori-community` → **Install**.
 
 > **Note:** This package depends on `@langchain/openai`, which makes it ineligible for n8n Cloud's community-node verification. It targets **self-hosted** n8n.
 

@@ -41,9 +41,14 @@ jobs:
       # the `prepublishOnly` guard expects — calling `npm publish`
       # directly aborts.
       #
-      # CRITICAL: no `env:` block here. Setting NODE_AUTH_TOKEN — even
-      # to an empty string — makes npm treat it as token-based auth and
-      # skip the OIDC / Trusted Publishing flow, surfacing as ENEEDAUTH
-      # or a misleading 404.
+      # TEMPORARY: NODE_AUTH_TOKEN is set to claim the brand-new
+      # `n8n-nodes-memori-community` name on npm. Trusted Publishing
+      # can't be configured for a package that doesn't exist yet, so
+      # the first publish must use a token. Once the package is on npm
+      # and a Trusted Publisher is configured on npmjs.com, REMOVE this
+      # env: block — any value (even '') makes npm skip OIDC and breaks
+      # later publishes with ENEEDAUTH or a misleading 404.
       - name: Publish
+        env:
+          NODE_AUTH_TOKEN: ${{ secrets.NPM_TOKEN }}
         run: npm run release

@@ -4,7 +4,7 @@ Instructions for Claude Code agents working in this repo.
 
 ## What this is
 
-`n8n-nodes-memori` — an n8n community-node package that ships a **Memori Chat Model** sub-node for the AI Agent. Published to npm; users install it via **Settings → Community Nodes** in self-hosted n8n.
+`n8n-nodes-memori-community` — an n8n community-node package that ships a **Memori Chat Model** sub-node for the AI Agent. Published to npm; users install it via **Settings → Community Nodes** in self-hosted n8n.
 
 The node wraps LangChain.js `ChatOpenAI` and injects a top-level `memori_attribution` object into every outgoing chat completion body so a self-hosted Memori proxy can partition memory per **entity** / **process** / **session**.
 
@@ -85,11 +85,11 @@ We depend on `@langchain/openai`, which disqualifies us from n8n Cloud verificat
 For pre-release testing before publishing to npm:
 
 ```bash
-npm pack                                   # -> n8n-nodes-memori-X.Y.Z.tgz
-scp n8n-nodes-memori-*.tgz linuxuser@imago-n8n-dev.bengal-major.ts.net:/tmp/
+npm pack                                   # -> n8n-nodes-memori-community-X.Y.Z.tgz
+scp n8n-nodes-memori-community-*.tgz linuxuser@imago-n8n-dev.bengal-major.ts.net:/tmp/
 ssh linuxuser@imago-n8n-dev.bengal-major.ts.net '
-  docker cp /tmp/n8n-nodes-memori-*.tgz n8n:/tmp/
-  docker exec -u node -w /home/node/.n8n/nodes n8n npm install /tmp/n8n-nodes-memori-*.tgz
+  docker cp /tmp/n8n-nodes-memori-community-*.tgz n8n:/tmp/
+  docker exec -u node -w /home/node/.n8n/nodes n8n npm install /tmp/n8n-nodes-memori-community-*.tgz
   docker restart n8n
 '
 ```
