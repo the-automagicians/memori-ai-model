@@ -101,7 +101,7 @@ docker exec -u node n8n node -e '
 '
 ```
 
-Memori instance lives at `http://100.119.117.6:8012/v1` (tailnet host `admiral`). `/v1/models` is unauthenticated; `/v1/chat/completions` validates the bearer token.
+Memori lives on our internal tailnet behind the credential's Base URL — grab the current host from the "Memori account" credential in the dev n8n if needed. On that instance, `/v1/models` is unauthenticated while `/v1/chat/completions` validates the bearer token, so the model dropdown populates even when the API key is wrong.
 
 ## Useful pointers
 

@@ -33,6 +33,17 @@ Behaves like the built-in OpenAI Chat Model sub-node, plus three required fields
 
 Your Memori proxy reads `memori_attribution`, records/retrieves memory for that partition, and forwards the (possibly memory-augmented) request to the upstream model.
 
+## Prerequisites
+
+You need a **self-hosted Memori instance with the OpenAI-compatibility layer enabled**. This node is only the client side — it sends `memori_attribution`-stamped requests to an OpenAI-compatible endpoint, but the endpoint itself is yours to run.
+
+Your Memori build must expose at least:
+
+- `POST /v1/chat/completions` — OpenAI-compatible chat completions (with `Authorization: Bearer <key>` auth, and acceptance of the top-level `memori_attribution` object).
+- `GET /v1/models` — the model-list endpoint used to populate the Model dropdown at edit time.
+
+For the OpenAPI schema Memori actually serves, hit `/docs` on your running instance (e.g. `http://<your-memori-host>:8012/docs`).
+
 ## Install
 
 In self-hosted n8n: **Settings → Community Nodes → Install** → enter `n8n-nodes-memori` → **Install**.
@@ -43,13 +54,13 @@ In self-hosted n8n: **Settings → Community Nodes → Install** → enter `n8n-
 
 1. Create a **Memori API** credential (installed by this package). Fill:
    - **API Key** — whatever your Memori instance expects on `Authorization: Bearer <key>`
-   - **Base URL** — e.g. `http://memori.internal:8012/v1` (must include the `/v1` — or whatever path your Memori build serves)
+   - **Base URL** — must point at the OpenAI-compatible root on your Memori instance and include the version segment, e.g. `https://<your-memori-host>/v1`.
 2. Add an **AI Agent** node. Click the language-model socket and pick **Memori Chat Model**.
 3. Fill the fields:
 
 | Field         | Example                                                | Notes                                                 |
 |---------------|--------------------------------------------------------|-------------------------------------------------------|
-| Model         | `gpt-4o-mini`                                          | Whatever alias your Memori server accepts             |
+| Model         | pick from dropdown                                     | Loaded live from `{baseUrl}/models`. Switch to **ID** mode for aliases not in the list. |
 | Entity ID     | `={{$json.userId}}`                                    | Usually the end-user. Expressions supported.          |
 | Process ID    | `my_n8n_agent`                                         | Logical app/process name. Static per workflow is fine.|
 | Session ID    | `={{ $json.sessionId ?? $json.userId + '_web' }}`      | Conversation identifier. Expressions supported.       |
