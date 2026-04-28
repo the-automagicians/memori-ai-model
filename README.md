@@ -55,6 +55,21 @@ For the OpenAPI schema Memori actually serves, hit `/docs` on your running insta
 
 > **Not a target: hosted Memori Cloud.** The public Memori product at [memorilabs.ai](https://memorilabs.ai/docs/) is an SDK-wrapper architecture (`Memori().llm.register(client)`), plus an MCP server at `https://api.memorilabs.ai/mcp/` that uses `X-Memori-API-Key` auth. It does not expose the OpenAI-compatible chat-completions proxy this node points at. MemoriLabs is building the official n8n MCP integration for that path.
 
+## Self-hosting a Memori proxy
+
+This node speaks OpenAI-compatible HTTP, but the upstream [MemoriLabs/Memori](https://github.com/MemoriLabs/Memori) project is a Python SDK, not a server. To bridge them you run a small FastAPI app that wraps the SDK. A starter gist is available with five files (`main.py`, `requirements.txt`, `Dockerfile`, `docker-compose.yml`, `.env.example`):
+
+**👉 [gist.github.com/mheland/550e5263cd33558ff1acdadf54870abc](https://gist.github.com/mheland/550e5263cd33558ff1acdadf54870abc)**
+
+1. Clone the gist into an empty directory.
+2. Provision a Postgres 14+ database; put its URL into `.env` as `MEMORI_POSTGRES_URL`. Memori auto-creates its schema on first run.
+3. Set the rest of `.env`: `MEMORI_PROXY_API_KEY` (any long random string — clients send this as `Authorization: Bearer …`), `OPENAI_API_KEY`, and `UPSTREAM_BASE_URL` if you're routing through something other than OpenAI direct.
+4. `docker compose up -d --build`.
+5. `curl -s http://localhost:8012/health` → `{"status":"healthy"}`.
+6. In n8n, install `n8n-nodes-memori-community`, create a Memori API credential with Base URL `http://<host>:8012/v1` and the proxy key, and add a Memori Chat Model to your Agent.
+
+The starter is intentionally minimal — within-session memory only. Cross-session fact recall, post-stream augmentation, and gpt-5 / o-series param compat are layered on top in production deployments.
+
 ## Install
 
 In self-hosted n8n: **Settings → Community Nodes → Install** → enter `n8n-nodes-memori-community` → **Install**.
