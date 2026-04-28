@@ -6,7 +6,7 @@
 
 An [n8n](https://n8n.io) community node that exposes a **Memori Chat Model** sub-node for the AI Agent.
 
-[Memori](https://github.com/GibsonAI/memori) is an open-source, self-hosted memory layer for LLMs. When fronted as an OpenAI-compatible proxy it partitions knowledge per **entity** (end-user), **process** (application) and **session** — but only if the client attaches those identifiers on every request. n8n's built-in OpenAI Chat Model has no UI for that, so this package ships a drop-in replacement that does.
+[Memori](https://github.com/MemoriLabs/Memori) is an open-source memory layer for LLMs. When fronted as an OpenAI-compatible proxy it partitions knowledge per **entity** (end-user), **process** (application) and **session** — but only if the client attaches those identifiers on every request. n8n's built-in OpenAI Chat Model has no UI for that, so this package ships a drop-in replacement that does.
 
 ## What it does
 
@@ -14,7 +14,7 @@ Behaves like the built-in OpenAI Chat Model sub-node, plus three required fields
 
 ### Request shape
 
-Outgoing requests carry the attribution in **both** the body (as `memori_attribution`) **and** as HTTP headers (`X-Memori-*`). Self-hosted Memori proxies read the body; the hosted Memori service and Memori MCP expect the headers. Sending both means the same n8n credential works against all three backends:
+Outgoing requests carry the attribution in **both** the body (as `memori_attribution`) **and** as HTTP headers (`X-Memori-*`), so a self-hosted Memori build can read whichever channel it prefers:
 
 ```http
 POST /v1/chat/completions HTTP/1.1
@@ -53,6 +53,8 @@ Your Memori build must expose at least:
 
 For the OpenAPI schema Memori actually serves, hit `/docs` on your running instance (e.g. `http://<your-memori-host>:8012/docs`).
 
+> **Not a target: hosted Memori Cloud.** The public Memori product at [memorilabs.ai](https://memorilabs.ai/docs/) is an SDK-wrapper architecture (`Memori().llm.register(client)`), plus an MCP server at `https://api.memorilabs.ai/mcp/` that uses `X-Memori-API-Key` auth. It does not expose the OpenAI-compatible chat-completions proxy this node points at. MemoriLabs is building the official n8n MCP integration for that path.
+
 ## Install
 
 In self-hosted n8n: **Settings → Community Nodes → Install** → enter `n8n-nodes-memori-community` → **Install**.
@@ -85,10 +87,10 @@ The node doesn't hard-code `stream`. Whether `stream: true` is sent to Memori de
 
 ## How it works
 
-The three attribution values ride on two channels:
+The three attribution values ride on two channels so a self-hosted Memori build can read whichever it prefers:
 
-- **Body** — `modelKwargs.memori_attribution` on LangChain.js `ChatOpenAI` serializes as a top-level key in the JSON body. Self-hosted Memori builds read this.
-- **Headers** — `configuration.defaultHeaders` adds `X-Memori-Entity-Id` / `X-Memori-Process-Id` / `X-Memori-Session-Id` to every request. Hosted Memori + Memori MCP read these.
+- **Body** — `modelKwargs.memori_attribution` on LangChain.js `ChatOpenAI` serializes as a top-level key in the JSON body.
+- **Headers** — `configuration.defaultHeaders` adds `X-Memori-Entity-Id` / `X-Memori-Process-Id` / `X-Memori-Session-Id` to every request.
 
 ```ts
 new ChatOpenAI({

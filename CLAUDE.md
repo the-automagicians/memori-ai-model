@@ -44,8 +44,10 @@ Do **not** use the `git+https://…` prefix. The provenance validator checks thi
 ### 3. Attribution is sent on TWO channels
 
 Both must be present; don't remove either:
-- **Body** — `modelKwargs.memori_attribution = { entity_id, process_id, session_id }` → serialized as a top-level JSON key. Self-hosted Memori reads this.
-- **Headers** — `configuration.defaultHeaders['X-Memori-{Entity,Process,Session}-Id']`. Hosted Memori and Memori MCP read these.
+- **Body** — `modelKwargs.memori_attribution = { entity_id, process_id, session_id }` → serialized as a top-level JSON key. Our self-hosted Memori proxy reads this.
+- **Headers** — `configuration.defaultHeaders['X-Memori-{Entity,Process,Session}-Id']`. Our self-hosted proxy also reads these.
+
+This contract is **specific to our self-hosted Memori proxy**, not the public Memori product. See "Memori Cloud compatibility" below.
 
 ### 4. Custom fetch wrapper in `LmChatMemori.node.ts` is load-bearing
 
@@ -107,7 +109,17 @@ docker exec -u node n8n node -e '
 '
 ```
 
-Memori lives on our internal tailnet behind the credential's Base URL — grab the current host from the "Memori account" credential in the dev n8n if needed. On that instance, `/v1/models` is unauthenticated while `/v1/chat/completions` validates the bearer token, so the model dropdown populates even when the API key is wrong.
+Memori lives on our internal tailnet at `http://gpu-vps.bengal-major.ts.net:8012/v1` (current host as of 2026-04-28; previously `admiral` / `100.119.117.6`). The "Memori account" credential in the dev n8n is the source of truth if this drifts. On that instance, `/v1/models` is unauthenticated while `/v1/chat/completions` validates the bearer token, so the model dropdown populates even when the API key is wrong.
+
+## Memori Cloud compatibility (per memorilabs.ai docs)
+
+This node **only talks to our self-hosted Memori proxy**, not to the public Memori product. The public surface is different in shape:
+
+- **Memori Cloud** (`memorilabs.ai`) is an SDK-wrapper architecture (`Memori().llm.register(client)` + `mem.attribution(...)`), not an OpenAI-compatible chat-completions proxy. There is no public `/v1/chat/completions` endpoint to point a `ChatOpenAI` base URL at.
+- **Memori MCP server** at `https://api.memorilabs.ai/mcp/` uses `X-Memori-API-Key` (not `Authorization: Bearer`), `X-Memori-Entity-Id`, `X-Memori-Process-Id`. Session is server-derived as `<entity_id>-<UTC YYYY-MM-DD:HH>` — no `X-Memori-Session-Id` header is accepted.
+- **`memori-byodb`** (their self-hosted variant) is also SDK-wrapper based; the OpenAI-compatible proxy contract this node assumes is **our internal proxy**, not part of the documented Memori contract.
+
+Implication: an n8n integration with hosted Memori needs a different node shape (an MCP tool-node, or an SDK pre/post pair). MemoriLabs is building the n8n MCP integration; we are not duplicating that here.
 
 ## Useful pointers
 
