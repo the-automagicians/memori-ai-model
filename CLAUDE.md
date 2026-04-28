@@ -76,6 +76,12 @@ The built-in OpenAI Chat Model node uses them; we explicitly don't.
 
 We depend on `@langchain/openai`, which disqualifies us from n8n Cloud verification. `eslint.config.mjs` uses `configWithoutCloudSupport`; `package.json` has `n8n.strict: false`. Don't re-enable cloud-support (`npx n8n-node cloud-support enable`) — it'll flag the LangChain dep and the credential as errors.
 
+### 9. `Enable Thinking` toggle injects `chat_template_kwargs.enable_thinking` unconditionally
+
+Added in 0.2.0. The boolean (default `false`) is **always** serialized as `chat_template_kwargs: { enable_thinking: <bool> }` on the request body via `modelKwargs` — not only when ON. Verified safe via Memori proxy: it strips the field when forwarding to OpenAI routes (proven against `gpt-4.1-mini` 2026-04-29), and vLLM/SGLang templates that don't reference `enable_thinking` ignore it. Don't make injection conditional without a reason — always-send keeps the body shape predictable and avoids workflow-version skew.
+
+The Memori proxy currently strips upstream `reasoning` / `reasoning_content` from responses, so end users won't see the chain-of-thought even with the toggle on (token-count delta proves vLLM is doing the work). That's a proxy-side concern, not a node bug.
+
 ## Release process
 
 1. Bump `version` in `package.json`.

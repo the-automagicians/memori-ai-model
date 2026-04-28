@@ -84,12 +84,13 @@ In self-hosted n8n: **Settings → Community Nodes → Install** → enter `n8n-
 2. Add an **AI Agent** node. Click the language-model socket and pick **Memori Chat Model**.
 3. Fill the fields:
 
-| Field         | Example                                                | Notes                                                 |
-|---------------|--------------------------------------------------------|-------------------------------------------------------|
-| Model         | pick from dropdown                                     | Loaded live from `{baseUrl}/models`. Switch to **ID** mode for aliases not in the list. |
-| Entity ID     | `={{$json.userId}}`                                    | Usually the end-user. Expressions supported.          |
-| Process ID    | `my_n8n_agent`                                         | Logical app/process name. Static per workflow is fine.|
-| Session ID    | `={{ $json.sessionId ?? $json.userId + '_web' }}`      | Conversation identifier. Expressions supported.       |
+| Field            | Example                                                | Notes                                                 |
+|------------------|--------------------------------------------------------|-------------------------------------------------------|
+| Model            | pick from dropdown                                     | Loaded live from `{baseUrl}/models`. Switch to **ID** mode for aliases not in the list. |
+| Entity ID        | `={{$json.userId}}`                                    | Usually the end-user. Expressions supported.          |
+| Process ID       | `my_n8n_agent`                                         | Logical app/process name. Static per workflow is fine.|
+| Session ID       | `={{ $json.sessionId ?? $json.userId + '_web' }}`      | Conversation identifier. Expressions supported.       |
+| Enable Thinking  | off (default) / on                                     | Sent as `chat_template_kwargs.enable_thinking`. Recognised by vLLM/SGLang-served models (GLM, Qwen3, DeepSeek-R1); ignored otherwise. The Memori proxy strips it cleanly when routing to OpenAI. |
 
 Optional fields under **Options**: Base URL override, Sampling Temperature, Maximum Number of Tokens, Timeout, Max Retries.
 
