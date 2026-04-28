@@ -100,6 +100,14 @@ export class LmChatMemori implements INodeType {
 					'Conversation/session identifier. Sent as memori_attribution.session_id. Supports expressions referencing the incoming item.',
 			},
 			{
+				displayName: 'Enable Thinking',
+				name: 'enableThinking',
+				type: 'boolean',
+				default: false,
+				description:
+					'Whether to allow the model to emit reasoning tokens. Sent as chat_template_kwargs.enable_thinking — recognised by vLLM/SGLang-served models such as GLM, Qwen3, DeepSeek-R1. Ignored by servers that do not consume the field.',
+			},
+			{
 				displayName: 'Options',
 				name: 'options',
 				type: 'collection',
@@ -194,6 +202,7 @@ export class LmChatMemori implements INodeType {
 		const entityId = this.getNodeParameter('entityId', itemIndex) as string;
 		const processId = this.getNodeParameter('processId', itemIndex) as string;
 		const sessionId = this.getNodeParameter('sessionId', itemIndex) as string;
+		const enableThinking = this.getNodeParameter('enableThinking', itemIndex, false) as boolean;
 
 		const options = this.getNodeParameter('options', itemIndex, {}) as {
 			baseURL?: string;
@@ -254,6 +263,9 @@ export class LmChatMemori implements INodeType {
 					entity_id: entityId,
 					process_id: processId,
 					session_id: sessionId,
+				},
+				chat_template_kwargs: {
+					enable_thinking: enableThinking,
 				},
 			},
 		});
