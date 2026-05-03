@@ -110,9 +110,12 @@ export class LmChatMemori implements INodeType {
 			{
 				displayName: 'Incognito',
 				name: 'incognito',
-				type: 'string',
+				type: 'options',
 				default: 'false',
-				placeholder: 'false',
+				options: [
+					{ name: 'False', value: 'false' },
+					{ name: 'True', value: 'true' },
+				],
 				description:
 					'When truthy (true / 1 / yes / on), bypass Memori for this turn — no recall injection, no DB writes, no augmentation. Switch to Expression mode to wire it from an incoming webhook payload.',
 			},

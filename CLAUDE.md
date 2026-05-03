@@ -82,9 +82,9 @@ Added in 0.2.0. The boolean (default `false`) is **always** serialized as `chat_
 
 The Memori proxy currently strips upstream `reasoning` / `reasoning_content` from responses, so end users won't see the chain-of-thought even with the toggle on (token-count delta proves vLLM is doing the work). That's a proxy-side concern, not a node bug.
 
-### 10. `Incognito` field is `string`, not `boolean`, by design
+### 10. `Incognito` field is `options` (False / True dropdown), not `boolean`, by design
 
-Added in 0.3.0. The field type is `string` with default `'false'` so the n8n editor opens in fixed mode and the user can flip it to **Expression** to wire e.g. an incoming webhook payload value. A boolean toggle would also support expressions via the cog menu, but the user's stated workflow is "paste an expression that resolves at runtime" — string + Expression is the natural fit.
+Added in 0.3.0. The field type is `options` with values `'false'` / `'true'` (string-typed values, default `'false'`) so the editor renders a dropdown for the common static case while still exposing the cog → **Expression** switch for the user's stated workflow ("paste an expression that resolves at runtime"). A `boolean` toggle would also support expressions via the cog, but rendering as False/True in the dropdown matches the textual values that flow through expressions and proxy headers, removing one mental step.
 
 `supplyData` parses leniently to match the proxy's `_is_incognito` contract: `1 | true | yes | on` (case-insensitive, trimmed) is truthy; everything else (including `''`, `'false'`, undefined, `0`) is falsy. The resolved boolean is sent on **both channels** following rule #3:
 - Header `X-Memori-Incognito: 'true'|'false'` (always sent — see rule #9).
