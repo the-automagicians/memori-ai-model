@@ -84,7 +84,13 @@ The Memori proxy currently strips upstream `reasoning` / `reasoning_content` fro
 
 ### 10. `Incognito` field is `options` (False / True dropdown), not `boolean`, by design
 
-Added in 0.3.0. The field type is `options` with values `'false'` / `'true'` (string-typed values, default `'false'`) so the editor renders a dropdown for the common static case while still exposing the cog → **Expression** switch for the user's stated workflow ("paste an expression that resolves at runtime"). A `boolean` toggle would also support expressions via the cog, but rendering as False/True in the dropdown matches the textual values that flow through expressions and proxy headers, removing one mental step.
+Added in 0.3.2 (skipped 0.3.0/0.3.1 — see release-versioning note below). The field type is `options` with values `'false'` / `'true'` (string-typed values, default `'false'`) so the editor renders a dropdown for the common static case while still exposing the cog → **Expression** switch for the user's stated workflow ("paste an expression that resolves at runtime"). A `boolean` toggle would also support expressions via the cog, but rendering as False/True in the dropdown matches the textual values that flow through expressions and proxy headers, removing one mental step.
+
+### 11. Release versioning skips stale tags from the renamed predecessor
+
+The repo previously published as `n8n-nodes-memori`, which carried tags up to `v0.4.0`. After the rename to `n8n-nodes-memori-community` (commit `6a8fb16`) the version was reset to `0.1.0`, and npm history under the new name is `0.1.0 → 0.1.1 → 0.1.2 → 0.2.0 → 0.3.2`. Tags `v0.3.0`, `v0.3.1`, `v0.4.0` exist in `git tag -l` but belong to the old package and don't match anything on the current npm name.
+
+When bumping versions, **don't reuse a tag that already exists for the predecessor** — `git tag -a` will refuse and you'll discover this at release time. Skip past it (e.g. `0.3.2` instead of retagging `0.3.0`) rather than rewriting history. The old tags are kept for forensics; deleting them gains nothing and breaks anyone who already fetched them.
 
 `supplyData` parses leniently to match the proxy's `_is_incognito` contract: `1 | true | yes | on` (case-insensitive, trimmed) is truthy; everything else (including `''`, `'false'`, undefined, `0`) is falsy. The resolved boolean is sent on **both channels** following rule #3:
 - Header `X-Memori-Incognito: 'true'|'false'` (always sent — see rule #9).
