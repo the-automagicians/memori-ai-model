@@ -91,6 +91,7 @@ In self-hosted n8n: **Settings → Community Nodes → Install** → enter `n8n-
 | Process ID       | `my_n8n_agent`                                         | Logical app/process name. Static per workflow is fine.|
 | Session ID       | `={{ $json.sessionId ?? $json.userId + '_web' }}`      | Conversation identifier. Expressions supported.       |
 | Enable Thinking  | off (default) / on                                     | Sent as `chat_template_kwargs.enable_thinking`. Recognised by vLLM/SGLang-served models (GLM, Qwen3, DeepSeek-R1); ignored otherwise. The Memori proxy strips it cleanly when routing to OpenAI. |
+| Incognito        | `false` (default) / `true` / `={{ $json.incognito }}`  | When truthy (`true` / `1` / `yes` / `on`), the Memori proxy bypasses recall + augmentation + DB writes for that turn. String type so the field defaults to fixed mode and can be flipped to **Expression** to wire from an incoming webhook payload. Requires Memori proxy ≥ v10. |
 
 Optional fields under **Options**: Base URL override, Sampling Temperature, Maximum Number of Tokens, Timeout, Max Retries.
 

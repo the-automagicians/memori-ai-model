@@ -108,6 +108,15 @@ export class LmChatMemori implements INodeType {
 					'Whether to allow the model to emit reasoning tokens. Sent as chat_template_kwargs.enable_thinking — recognised by vLLM/SGLang-served models such as GLM, Qwen3, DeepSeek-R1. Ignored by servers that do not consume the field.',
 			},
 			{
+				displayName: 'Incognito',
+				name: 'incognito',
+				type: 'string',
+				default: 'false',
+				placeholder: 'false',
+				description:
+					'When truthy (true / 1 / yes / on), bypass Memori for this turn — no recall injection, no DB writes, no augmentation. Switch to Expression mode to wire it from an incoming webhook payload.',
+			},
+			{
 				displayName: 'Options',
 				name: 'options',
 				type: 'collection',
@@ -204,6 +213,17 @@ export class LmChatMemori implements INodeType {
 		const sessionId = this.getNodeParameter('sessionId', itemIndex) as string;
 		const enableThinking = this.getNodeParameter('enableThinking', itemIndex, false) as boolean;
 
+		// Incognito is a string (not boolean) so the field defaults to fixed
+		// mode and the user can flip it to Expression to wire e.g.
+		// `{{ $json.body.incognito }}` from an incoming webhook. Parse leniently
+		// to match the proxy's _is_incognito contract: 1|true|yes|on (case-
+		// insensitive) is truthy, anything else (including '', 'false', undefined,
+		// number 0) is falsy.
+		const incognitoRaw = this.getNodeParameter('incognito', itemIndex, 'false');
+		const incognito = ['1', 'true', 'yes', 'on'].includes(
+			String(incognitoRaw).trim().toLowerCase(),
+		);
+
 		const options = this.getNodeParameter('options', itemIndex, {}) as {
 			baseURL?: string;
 			temperature?: number;
@@ -221,6 +241,10 @@ export class LmChatMemori implements INodeType {
 				'X-Memori-Entity-Id': entityId,
 				'X-Memori-Process-Id': processId,
 				'X-Memori-Session-Id': sessionId,
+				// Always-send convention (see CLAUDE.md rule #9): the proxy treats
+				// "false" / "0" / absent as not-incognito, so sending unconditionally
+				// keeps the request shape predictable.
+				'X-Memori-Incognito': String(incognito),
 			},
 			fetch: async (url, init) => {
 				if (init?.body && typeof init.body === 'string') {
@@ -267,6 +291,7 @@ export class LmChatMemori implements INodeType {
 				chat_template_kwargs: {
 					enable_thinking: enableThinking,
 				},
+				incognito,
 			},
 		});
 
