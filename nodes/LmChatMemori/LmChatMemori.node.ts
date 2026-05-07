@@ -110,14 +110,10 @@ export class LmChatMemori implements INodeType {
 			{
 				displayName: 'Incognito',
 				name: 'incognito',
-				type: 'options',
-				default: 'false',
-				options: [
-					{ name: 'False', value: 'false' },
-					{ name: 'True', value: 'true' },
-				],
+				type: 'boolean',
+				default: false,
 				description:
-					'When truthy (true / 1 / yes / on), bypass Memori for this turn — no recall injection, no DB writes, no augmentation. Switch to Expression mode to wire it from an incoming webhook payload.',
+					'Whether to bypass Memori for this turn — no recall injection, no DB writes, no augmentation. Use Expression mode to wire it from an incoming webhook payload.',
 			},
 			{
 				displayName: 'Options',
@@ -216,16 +212,16 @@ export class LmChatMemori implements INodeType {
 		const sessionId = this.getNodeParameter('sessionId', itemIndex) as string;
 		const enableThinking = this.getNodeParameter('enableThinking', itemIndex, false) as boolean;
 
-		// Incognito is a string (not boolean) so the field defaults to fixed
-		// mode and the user can flip it to Expression to wire e.g.
-		// `{{ $json.body.incognito }}` from an incoming webhook. Parse leniently
-		// to match the proxy's _is_incognito contract: 1|true|yes|on (case-
-		// insensitive) is truthy, anything else (including '', 'false', undefined,
-		// number 0) is falsy.
-		const incognitoRaw = this.getNodeParameter('incognito', itemIndex, 'false');
-		const incognito = ['1', 'true', 'yes', 'on'].includes(
-			String(incognitoRaw).trim().toLowerCase(),
-		);
+		// Field is boolean-typed but parse leniently so workflows saved under
+		// the legacy 0.3.2 'options' schema (string 'false'/'true') and
+		// expressions that resolve to non-boolean values still work. Matches
+		// the proxy's _is_incognito contract: 1|true|yes|on (case-insensitive)
+		// is truthy; anything else is falsy.
+		const incognitoRaw = this.getNodeParameter('incognito', itemIndex, false);
+		const incognito =
+			typeof incognitoRaw === 'boolean'
+				? incognitoRaw
+				: ['1', 'true', 'yes', 'on'].includes(String(incognitoRaw).trim().toLowerCase());
 
 		const options = this.getNodeParameter('options', itemIndex, {}) as {
 			baseURL?: string;

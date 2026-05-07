@@ -82,21 +82,19 @@ Added in 0.2.0. The boolean (default `false`) is **always** serialized as `chat_
 
 The Memori proxy currently strips upstream `reasoning` / `reasoning_content` from responses, so end users won't see the chain-of-thought even with the toggle on (token-count delta proves vLLM is doing the work). That's a proxy-side concern, not a node bug.
 
-### 10. `Incognito` field is `options` (False / True dropdown), not `boolean`, by design
+### 10. `Incognito` field is `boolean`; `supplyData` still parses leniently
 
-Added in 0.3.2 (skipped 0.3.0/0.3.1 — see release-versioning note below). The field type is `options` with values `'false'` / `'true'` (string-typed values, default `'false'`) so the editor renders a dropdown for the common static case while still exposing the cog → **Expression** switch for the user's stated workflow ("paste an expression that resolves at runtime"). A `boolean` toggle would also support expressions via the cog, but rendering as False/True in the dropdown matches the textual values that flow through expressions and proxy headers, removing one mental step.
+Added in 0.3.2 as `options` (string `'false'`/`'true'` dropdown), changed to `boolean` in 0.3.3 because the Tyk gateway in front of `imago-n8n-test` now disambiguates incoming incognito payloads (`yes`/`1`/`on`/`true` → `true`, else `false`) and forwards a real JSON boolean. With the field as `options` the expression `{{ $json.body.incognito }}` resolved to a boolean and n8n rejected it as "wrong type" because `options` only accepts its declared string values. A `boolean` field accepts the boolean natively and still exposes the cog → **Expression** switch for the dynamic case.
+
+`supplyData` keeps the lenient parser (`1|true|yes|on` truthy, else falsy) so workflows saved under the 0.3.2 `options` schema (string `'false'`/`'true'`) and expressions that resolve to non-boolean values still work — boolean values are passed through directly. Don't tighten this without a reason; the safety net costs nothing.
+
+The resolved boolean is sent on **both channels** per rule #3: header `X-Memori-Incognito: 'true'|'false'` (always sent — see rule #9) and body `modelKwargs.incognito = <bool>` → top-level `incognito` JSON key. Memori proxy v10 reads either; `false` / absent / unknown is non-incognito.
 
 ### 11. Release versioning skips stale tags from the renamed predecessor
 
 The repo previously published as `n8n-nodes-memori`, which carried tags up to `v0.4.0`. After the rename to `n8n-nodes-memori-community` (commit `6a8fb16`) the version was reset to `0.1.0`, and npm history under the new name is `0.1.0 → 0.1.1 → 0.1.2 → 0.2.0 → 0.3.2`. Tags `v0.3.0`, `v0.3.1`, `v0.4.0` exist in `git tag -l` but belong to the old package and don't match anything on the current npm name.
 
 When bumping versions, **don't reuse a tag that already exists for the predecessor** — `git tag -a` will refuse and you'll discover this at release time. Skip past it (e.g. `0.3.2` instead of retagging `0.3.0`) rather than rewriting history. The old tags are kept for forensics; deleting them gains nothing and breaks anyone who already fetched them.
-
-`supplyData` parses leniently to match the proxy's `_is_incognito` contract: `1 | true | yes | on` (case-insensitive, trimmed) is truthy; everything else (including `''`, `'false'`, undefined, `0`) is falsy. The resolved boolean is sent on **both channels** following rule #3:
-- Header `X-Memori-Incognito: 'true'|'false'` (always sent — see rule #9).
-- Body `modelKwargs.incognito = <bool>` → top-level `incognito` key in JSON.
-
-Memori proxy v10 reads either; `false` / absent / unknown is non-incognito. Do not make either channel conditional without a reason.
 
 ## Release process
 
