@@ -19,6 +19,8 @@ nodes/LmChatMemori/LmChatMemori.node.ts # the sub-node (supplyData returns ChatO
 
 ## Common commands
 
+Requires **Node.js ≥ 22.16** (n8n's minimum). Earlier 22.x will pass `npm install` but crash `npm run dev` with "Your Node.js version … is currently not supported by n8n." Use the dev-container deploy path (below) if you can't upgrade locally.
+
 ```bash
 npm install
 npm run dev        # local n8n at :5678 with live-reload — fastest inner loop
@@ -30,6 +32,14 @@ npm pack           # produces a tarball for manual install on a remote n8n
 ```
 
 ## Non-obvious conventions (don't regress these)
+
+### Request flow (read this first)
+
+1. n8n's AI Agent calls `supplyData` on this sub-node per item.
+2. `supplyData` reads node parameters (entity/process/session/incognito/etc.), builds a `ClientOptions` with `defaultHeaders` (`X-Memori-*`) and a custom `fetch` wrapper, and returns a configured `ChatOpenAI`.
+3. The Agent invokes `ChatOpenAI`, which serializes a chat-completions body. `modelKwargs` injects `memori_attribution`, `chat_template_kwargs.enable_thinking`, and `incognito` as top-level body keys.
+4. Our custom `fetch` strips `top_p`/`n`/`presence_penalty`/`frequency_penalty` (Anthropic-routed models reject `temperature`+`top_p`) and drops the stale `Content-Length` so undici recomputes it.
+5. Request hits the Memori proxy at `{baseUrl}/v1/chat/completions`. The proxy reads attribution from headers OR body (rule #3) and incognito from either channel (rule #10), then forwards to the upstream OpenAI-compatible model server.
 
 ### 1. Never set `NODE_AUTH_TOKEN` in `publish.yml`
 
