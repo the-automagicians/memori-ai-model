@@ -106,6 +106,10 @@ The repo previously published as `n8n-nodes-memori`, which carried tags up to `v
 
 When bumping versions, **don't reuse a tag that already exists for the predecessor** — `git tag -a` will refuse and you'll discover this at release time. Skip past it (e.g. `0.3.2` instead of retagging `0.3.0`) rather than rewriting history. The old tags are kept for forensics; deleting them gains nothing and breaks anyone who already fetched them.
 
+### 12. Execution-log tracing is self-implemented (`MemoriLlmTracing.ts`)
+
+Added in 0.3.4. `supplyData` passes `callbacks: [new MemoriLlmTracing(this)]` to `ChatOpenAI`; it calls `addInputData` / `addOutputData` (`AiLanguageModel` connection) so each LLM call shows INPUT/OUTPUT in the n8n Logs panel, like the built-in OpenAI Chat Model. It is a minimal clone of n8n's `N8nLlmTracing` (`@n8n/ai-utilities`), which we must not import (rule #6: pinned duplicate `@langchain/core`/`n8n-workflow`, restrictive licence). Keep `awaitHandlers = true`, pass the index from `addInputData` back into `addOutputData`, and redact secrets from logged options. Callbacks sit above the HTTP layer, so the fetch wrapper (rule #4) is unaffected. `onFailedAttempt` wraps final failures in `NodeApiError` so errors render in the panel.
+
 ## Release process
 
 1. Bump `version` in `package.json`.

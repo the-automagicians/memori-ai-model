@@ -1,6 +1,9 @@
 import { ChatOpenAI, type ClientOptions } from '@langchain/openai';
+import { MemoriLlmTracing } from './MemoriLlmTracing';
 import {
+	NodeApiError,
 	NodeConnectionTypes,
+	type JsonObject,
 	type ILoadOptionsFunctions,
 	type INodeListSearchItems,
 	type INodeListSearchResult,
@@ -281,6 +284,14 @@ export class LmChatMemori implements INodeType {
 			timeout: options.timeout ?? 360000,
 			maxRetries: options.maxRetries ?? 2,
 			configuration,
+			// Surfaces input/output in the n8n execution Logs panel (see MemoriLlmTracing).
+			callbacks: [new MemoriLlmTracing(this)],
+			onFailedAttempt: (error: { retriesLeft?: number }) => {
+				if ((error?.retriesLeft ?? 0) > 0) return;
+				throw new NodeApiError(this.getNode(), error as unknown as JsonObject, {
+					functionality: 'configuration-node',
+				});
+			},
 			modelKwargs: {
 				memori_attribution: {
 					entity_id: entityId,
