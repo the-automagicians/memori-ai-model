@@ -102,13 +102,15 @@ The resolved boolean is sent on **both channels** per rule #3: header `X-Memori-
 
 ### 11. Release versioning skips stale tags from the renamed predecessor
 
-The repo previously published as `n8n-nodes-memori`, which carried tags up to `v0.4.0`. After the rename to `n8n-nodes-memori-community` (commit `6a8fb16`) the version was reset to `0.1.0`, and npm history under the new name is `0.1.0 → 0.1.1 → 0.1.2 → 0.2.0 → 0.3.2`. Tags `v0.3.0`, `v0.3.1`, `v0.4.0` exist in `git tag -l` but belong to the old package and don't match anything on the current npm name.
+The repo previously published as `n8n-nodes-memori`, which carried tags up to `v0.4.0`. After the rename to `n8n-nodes-memori-community` (commit `6a8fb16`) the version was reset to `0.1.0`, and npm history under the new name is `0.1.0 → 0.1.1 → 0.1.2 → 0.2.0 → 0.3.2 → 0.3.3 → 0.3.4`. Tags `v0.3.0`, `v0.3.1`, `v0.4.0` exist in `git tag -l` but belong to the old package and don't match anything on the current npm name.
 
 When bumping versions, **don't reuse a tag that already exists for the predecessor** — `git tag -a` will refuse and you'll discover this at release time. Skip past it (e.g. `0.3.2` instead of retagging `0.3.0`) rather than rewriting history. The old tags are kept for forensics; deleting them gains nothing and breaks anyone who already fetched them.
 
 ### 12. Execution-log tracing is self-implemented (`MemoriLlmTracing.ts`)
 
-Added in 0.3.4. `supplyData` passes `callbacks: [new MemoriLlmTracing(this)]` to `ChatOpenAI`; it calls `addInputData` / `addOutputData` (`AiLanguageModel` connection) so each LLM call shows INPUT/OUTPUT in the n8n Logs panel, like the built-in OpenAI Chat Model. It is a minimal clone of n8n's `N8nLlmTracing` (`@n8n/ai-utilities`), which we must not import (rule #6: pinned duplicate `@langchain/core`/`n8n-workflow`, restrictive licence). Keep `awaitHandlers = true`, pass the index from `addInputData` back into `addOutputData`, and redact secrets from logged options. Callbacks sit above the HTTP layer, so the fetch wrapper (rule #4) is unaffected. `onFailedAttempt` wraps final failures in `NodeApiError` so errors render in the panel.
+Added in 0.3.4. `supplyData` passes `callbacks: [new MemoriLlmTracing(this)]` to `ChatOpenAI`; it calls `addInputData` / `addOutputData` (`AiLanguageModel` connection) so each LLM call shows INPUT/OUTPUT in the n8n Logs panel, like the built-in OpenAI Chat Model. It is a minimal clone of n8n's `N8nLlmTracing` (`@n8n/ai-utilities`), which we must not import (rule #6: pinned duplicate `@langchain/core`/`n8n-workflow`, restrictive licence). Keep `awaitHandlers = true`, pass the index from `addInputData` back into `addOutputData`, and redact secrets from logged options. Callbacks sit above the HTTP layer, so the fetch wrapper (rule #4) is unaffected. `onFailedAttempt` wraps final failures in `NodeApiError` so errors render in the panel. Verified end-to-end on the dev n8n (2026-10-05, published 0.3.4): Memori Chat Model appears under AI Agent in Logs with input and output panes. No token estimates (upstream's tiktoken estimate is deliberately skipped; usage only shows if the proxy returns it).
+
+Note: local `npm view` may show a stale latest version right after a publish because Safe-chain suppresses package versions below its minimum age — check the GitHub Actions publish log or npmjs.com instead.
 
 ## Release process
 
