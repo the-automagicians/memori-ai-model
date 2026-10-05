@@ -112,6 +112,12 @@ Added in 0.3.4. `supplyData` passes `callbacks: [new MemoriLlmTracing(this)]` to
 
 Note: local `npm view` may show a stale latest version right after a publish because Safe-chain suppresses package versions below its minimum age — check the GitHub Actions publish log or npmjs.com instead.
 
+### 13. `Reasoning Effort` option is opt-in, unlike `Enable Thinking`
+
+Added in 0.3.5 under Options (`none|low|medium|high`, default `default` = not sent). When chosen, `modelKwargs.reasoning_effort` is serialized as a top-level body key. Needed for models that think by default and slow down simple prompts — e.g. DeepSeek V4 Flash is switched off with `reasoning_effort: "none"`. Deliberately **not** always-sent (contrast rule #9): OpenAI non-reasoning models reject the field, so it is only sent on explicit choice. `Enable Thinking` (chat_template_kwargs) is separate and still always sent.
+
+Verified via Aperture (`https://imagomodels.bengal-major.ts.net/v1`, 2026-10-05, curl, "17*23" prompt): `deepseek-v4p1-flash` and `kimi-k3` think by default and drop to 0 reasoning tokens with `reasoning_effort: "none"` (~2.5–2.7× faster); Kimi also honours `low` (reduces, doesn't remove) and `enable_thinking:false`. `google/gemma-4-31B-it` has thinking off by default, only `enable_thinking:true` turns it on, and it accepts-but-ignores `reasoning_effort`. `openai/gpt-oss-120b` could not be verified (gateway 503 "Provider temporarily unavailable" even on plain requests) — re-test before documenting.
+
 ## Release process
 
 1. Bump `version` in `package.json`.

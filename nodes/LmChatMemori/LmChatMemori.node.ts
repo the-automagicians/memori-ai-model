@@ -150,6 +150,21 @@ export class LmChatMemori implements INodeType {
 						description: 'Maximum tokens to generate. -1 leaves it unset so the server decides.',
 					},
 					{
+						displayName: 'Reasoning Effort',
+						name: 'reasoningEffort',
+						type: 'options',
+						default: 'default',
+						options: [
+							{ name: 'High', value: 'high' },
+							{ name: 'Low', value: 'low' },
+							{ name: 'Medium', value: 'medium' },
+							{ name: 'Model Default (Not Sent)', value: 'default' },
+							{ name: 'None (Disable Reasoning)', value: 'none' },
+						],
+						description:
+							'Sent as top-level reasoning_effort in the request body. Choose "None" to switch off thinking on models that reason by default (verified: DeepSeek V4 Flash, Kimi K3), which speeds up simple prompts. Not needed for Gemma 4 (thinking is off unless Enable Thinking is on). Leave on default for models that reject the field.',
+					},
+					{
 						displayName: 'Sampling Temperature',
 						name: 'temperature',
 						type: 'number',
@@ -232,6 +247,7 @@ export class LmChatMemori implements INodeType {
 			maxTokens?: number;
 			timeout?: number;
 			maxRetries?: number;
+			reasoningEffort?: string;
 		};
 
 		const configuration: ClientOptions = {
@@ -302,6 +318,11 @@ export class LmChatMemori implements INodeType {
 					enable_thinking: enableThinking,
 				},
 				incognito,
+				// Opt-in only (unlike enable_thinking, rule #9): some upstreams reject
+				// reasoning_effort, so it is omitted unless explicitly chosen.
+				...(options.reasoningEffort && options.reasoningEffort !== 'default'
+					? { reasoning_effort: options.reasoningEffort }
+					: {}),
 			},
 		});
 
